@@ -61,13 +61,31 @@ entity Microcomputer is
 		--sdMOSI		: out std_logic;
 		--sdMISO		: in std_logic;
 		--sdSCLK		: out std_logic;
-		driveLED		: out std_logic :='1'	
+		--driveLED		: out std_logic :='1';
+		
+		-- user io
+		SPI_SCK : in std_logic;
+      SPI_DI : in std_logic;
+      SPI_DO : out std_logic;
+      CONF_DATA0 : in std_logic;
+		LED : out std_logic
 	);
 end Microcomputer;
 
 architecture struct of Microcomputer is
 
-	signal n_reset						: std_logic :='1';
+	component user_io
+    port ( SPI_CLK, SPI_SS_IO, SPI_MOSI :in std_logic;
+           SPI_MISO : out std_logic;
+           JOY0 :     out std_logic_vector(5 downto 0);
+           JOY1 :     out std_logic_vector(5 downto 0);
+           SWITCHES : out std_logic_vector(1 downto 0);
+           BUTTONS : out std_logic_vector(1 downto 0);
+           CORE_TYPE : in std_logic_vector(7 downto 0)
+           );
+   end component user_io;
+
+	signal n_reset						: std_logic;-- :='1';
 	signal clk							: std_logic;
 	signal n_WR							: std_logic;
 	signal n_RD							: std_logic;
@@ -108,6 +126,12 @@ architecture struct of Microcomputer is
 	signal cpuClock					: std_logic;
 	signal serialClock				: std_logic;
 	signal sdClock						: std_logic;
+	
+	-- user io
+	signal joystick       : std_logic_vector(5 downto 0);
+	signal joystick2      : std_logic_vector(5 downto 0);
+	signal switches       : std_logic_vector(1 downto 0);
+	signal buttons        : std_logic_vector(1 downto 0);
 	
 begin
 
@@ -189,6 +213,7 @@ dataOut => interface1DataOut
 --ps2Data => ps2Data
 );
 	
+
 -- ____________________________________________________________________________________
 -- MEMORY READ/WRITE LOGIC GOES HERE
 n_ioWR <= n_WR or n_IORQ;
@@ -253,5 +278,24 @@ end if;
 serialClkCount <= serialClkCount + 2416;
 end if;
 end process;
+
+--______________________________________________________________________________________
+-- user io
+
+	user_io_d : user_io
+	  port map
+	  (
+		 SPI_CLK => SPI_SCK,
+		 SPI_SS_IO => CONF_DATA0,
+		 SPI_MISO => SPI_DO,
+		 SPI_MOSI => SPI_DI,
+		 JOY0 => joystick,
+		 JOY1 => joystick2,
+		 SWITCHES => switches,
+		 BUTTONS => buttons,
+		 CORE_TYPE => X"a2"
+		 );
+		 
+	n_reset <= not buttons(1);
 
 end;
