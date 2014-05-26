@@ -65,8 +65,8 @@ entity SBCTextDisplayRGB is
 		sync  	: out  std_logic;		
 		
 		-- Keyboard signals
-		ps2Clk	: inout std_logic;
-		ps2Data	: inout std_logic;
+		ps2Clk	: in std_logic;
+		ps2Data	: in std_logic;
  
 		-- FN keys passed out as general signals (momentary and toggled versions)
 		FNkeys	: out std_logic_vector(12 downto 0);
@@ -585,8 +585,8 @@ end generate GEN_NO_ATTRAM;
 
 	-- PROCESS DATA FROM PS2 KEYBOARD
 
-	ps2Data <= ps2DataOut when ps2DataOut='0' else 'Z';
-	ps2Clk <= ps2ClkOut when ps2ClkOut='0' else 'Z';
+	--ps2Data <= ps2DataOut when ps2DataOut='0' else 'Z';
+	--ps2Clk <= ps2ClkOut when ps2ClkOut='0' else 'Z';
 
 	-- PS2 clock de-glitcher - important because the FPGA is very sensistive
 	-- Filtered clock will not switch low to high until there is 50 more high samples than lows

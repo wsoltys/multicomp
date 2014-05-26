@@ -23,6 +23,7 @@ entity Microcomputer is
 		--n_reset		: in std_logic;
 		--clk			: in std_logic;
 		CLOCK_27    : in std_logic_vector(1 downto 0);                       --	Input clock MHz
+		SDRAM_nCS	: out std_logic;
 
 		--sramData		: inout std_logic_vector(7 downto 0);
 		--sramAddress	: out std_logic_vector(15 downto 0);
@@ -67,6 +68,9 @@ entity Microcomputer is
 		SPI_SCK : in std_logic;
       SPI_DI : in std_logic;
       SPI_DO : out std_logic;
+		SPI_SS2 : in std_logic; -- fpga
+		SPI_SS3 : in std_logic; -- OSD
+		SPI_SS4 : in std_logic; -- "sniff" mode
       CONF_DATA0 : in std_logic;
 		LED : out std_logic
 	);
@@ -77,12 +81,13 @@ architecture struct of Microcomputer is
 	component user_io
     port ( SPI_CLK, SPI_SS_IO, SPI_MOSI :in std_logic;
            SPI_MISO : out std_logic;
-           JOY0 :     out std_logic_vector(5 downto 0);
-           JOY1 :     out std_logic_vector(5 downto 0);
            SWITCHES : out std_logic_vector(1 downto 0);
            BUTTONS : out std_logic_vector(1 downto 0);
-           CORE_TYPE : in std_logic_vector(7 downto 0)
-           );
+           CORE_TYPE : in std_logic_vector(7 downto 0);
+			  clk			: in std_logic;
+			  ps2_clk	: out std_logic;
+			  ps2_data	: out std_logic
+          );
    end component user_io;
 
 	signal n_reset						: std_logic;-- :='1';
@@ -127,9 +132,9 @@ architecture struct of Microcomputer is
 	signal serialClock				: std_logic;
 	signal sdClock						: std_logic;
 	
-	-- user io
-	signal joystick       : std_logic_vector(5 downto 0);
-	signal joystick2      : std_logic_vector(5 downto 0);
+	signal ps2Clk						: std_logic;
+	signal ps2Data						: std_logic;
+	
 	signal switches       : std_logic_vector(1 downto 0);
 	signal buttons        : std_logic_vector(1 downto 0);
 	
@@ -143,6 +148,7 @@ pll_27_inst : entity work.pllclk_ez
 	 c0      => clk  -- master clock
   );
 
+  SDRAM_nCS <= '1'; -- disable ram
 	
 -- ____________________________________________________________________________________
 -- CPU CHOICE GOES HERE
@@ -208,9 +214,9 @@ n_rd => n_interface1CS or n_ioRD,
 n_int => n_int1,
 regSel => cpuAddress(0),
 dataIn => cpuDataOut,
-dataOut => interface1DataOut
---ps2Clk => ps2Clk,
---ps2Data => ps2Data
+dataOut => interface1DataOut,
+ps2Clk => ps2Clk,
+ps2Data => ps2Data
 );
 	
 
@@ -282,20 +288,21 @@ end process;
 --______________________________________________________________________________________
 -- user io
 
-	user_io_d : user_io
-	  port map
-	  (
-		 SPI_CLK => SPI_SCK,
-		 SPI_SS_IO => CONF_DATA0,
-		 SPI_MISO => SPI_DO,
-		 SPI_MOSI => SPI_DI,
-		 JOY0 => joystick,
-		 JOY1 => joystick2,
-		 SWITCHES => switches,
-		 BUTTONS => buttons,
-		 CORE_TYPE => X"a2"
-		 );
-		 
+user_io_inst : user_io
+	port map
+	(
+		SPI_CLK => SPI_SCK,
+		SPI_SS_IO => CONF_DATA0,
+		SPI_MOSI => SPI_DI,
+		SPI_MISO => SPI_DO,
+		SWITCHES => switches,
+		BUTTONS  => buttons,
+		clk		=> cpuClock,
+		ps2_data => ps2Data,
+		ps2_clk  => ps2Clk,
+		CORE_TYPE => X"a4"
+	);
+
 	n_reset <= not buttons(1);
 
 end;
