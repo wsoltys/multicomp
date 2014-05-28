@@ -89,9 +89,18 @@ architecture struct of Microcomputer is
 			  ps2_data	: out std_logic
           );
    end component user_io;
+	
+--	component clk12kHz
+--	port(
+--		clk_in : IN  std_logic;
+--		reset  : IN  std_logic;
+--		clk_out: OUT std_logic
+--	);
+--	end component;
 
 	signal n_reset						: std_logic;-- :='1';
 	signal clk							: std_logic;
+	signal clk_12k						: std_logic;
 	signal n_WR							: std_logic;
 	signal n_RD							: std_logic;
 	signal cpuAddress					: std_logic_vector(15 downto 0);
@@ -147,8 +156,17 @@ pll_27_inst : entity work.pllclk_ez
 	 inclk0  => CLOCK_27(0),
 	 c0      => clk  -- master clock
   );
+  
+pll_12k_inst : entity work.clk12kHz
+	port map
+	(
+		clk_in  => clk,
+      reset   => '0',
+      clk_out => clk_12k
+	);
 
   SDRAM_nCS <= '1'; -- disable ram
+  
 	
 -- ____________________________________________________________________________________
 -- CPU CHOICE GOES HERE
@@ -297,7 +315,7 @@ user_io_inst : user_io
 		SPI_MISO => SPI_DO,
 		SWITCHES => switches,
 		BUTTONS  => buttons,
-		clk		=> cpuClock,
+		clk		=> clk_12k,
 		ps2_data => ps2Data,
 		ps2_clk  => ps2Clk,
 		CORE_TYPE => X"a4"
@@ -306,3 +324,35 @@ user_io_inst : user_io
 	n_reset <= not buttons(1);
 
 end;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity clk12kHz is
+    Port (
+        clk_in : in  std_LOGIC;
+        reset  : in  STD_LOGIC;
+        clk_out: out STD_LOGIC
+    );
+end clk12kHz;
+
+architecture Behavioral of clk12kHz is
+    signal temporal: STD_LOGIC;
+    signal counter : integer range 0 to 2499 := 0;
+begin
+    frequency_divider: process (reset, clk_in) begin
+        if (reset = '1') then
+            temporal <= '0';
+            counter <= 0;
+        elsif rising_edge(clk_in) then
+            if (counter = 2499) then
+                temporal <= NOT(temporal);
+                counter <= 0;
+            else
+                counter <= counter + 1;
+            end if;
+        end if;
+    end process;
+    
+    clk_out <= temporal;
+end Behavioral;
